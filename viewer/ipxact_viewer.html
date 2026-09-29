@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IP-XACT viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #EDF1EE;
+  --grid: #CBD5CF;
+  --ink: #1A2934;
+  --ink-2: #4E5E67;
+  --ink-3: #82929A;
+  --panel: #F7F9F7;
+  --panel-2: #E6ECE8;
+  --rule: #C9D2CD;
+  --block: #FBFCFA;
+  --block-hier: #F2F6F3;
+  --sel: #E39B00;
+  --sel-soft: rgba(227, 155, 0, .16);
+  --err: #B3261E;
+  --c-axi: #2B63A6;
+  --c-axis: #7A48AE;
+  --c-lmb: #17866B;
+  --c-clk: #C0392B;
+  --c-gt: #9C7000;
+  --c-ddr: #8A5526;
+  --c-uart: #2F7F9C;
+  --c-bram: #6B7F12;
+  --c-dbg: #B0457A;
+  --c-bus: #5B6A73;
+  --c-wire: #7C8A90;
+  --f-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-cond: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #142029; --grid: #233441; --ink: #E3EBEA; --ink-2: #A6B5BA; --ink-3: #6D7F87;
+    --panel: #1A2731; --panel-2: #22323D; --rule: #2E4150; --block: #1C2B36; --block-hier: #203240;
+    --sel: #FFB627; --sel-soft: rgba(255, 182, 39, .18); --err: #FF8A80;
+    --c-axi: #6FA4E8; --c-axis: #B38BE6; --c-lmb: #4FC7A2; --c-clk: #F07564; --c-gt: #E0B23E;
+    --c-ddr: #D59A63; --c-uart: #67BEDB; --c-bram: #B2C94A; --c-dbg: #E58AB8; --c-bus: #9AAAB3; --c-wire: #7F9199;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #142029; --grid: #233441; --ink: #E3EBEA; --ink-2: #A6B5BA; --ink-3: #6D7F87;
+  --panel: #1A2731; --panel-2: #22323D; --rule: #2E4150; --block: #1C2B36; --block-hier: #203240;
+  --sel: #FFB627; --sel-soft: rgba(255, 182, 39, .18); --err: #FF8A80;
+  --c-axi: #6FA4E8; --c-axis: #B38BE6; --c-lmb: #4FC7A2; --c-clk: #F07564; --c-gt: #E0B23E;
+  --c-ddr: #D59A63; --c-uart: #67BEDB; --c-bram: #B2C94A; --c-dbg: #E58AB8; --c-bus: #9AAAB3; --c-wire: #7F9199;
+}
+*, *::before, *::after { box-sizing: inherit; }
+[hidden] { display: none !important; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  height: 100%; margin: 0; background: var(--panel); color: var(--ink);
+  font: 14px/1.45 var(--f-ui); -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+
+/* ---------- frame ---------- */
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+header.bar {
+  display: flex; align-items: center; gap: 14px; padding: 8px 14px;
+  border-bottom: 1px solid var(--rule); background: var(--panel); min-height: 50px;
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand svg { flex: none; }
+.brand-title { font-weight: 600; font-size: 15px; white-space: nowrap; }
+.brand-meta { color: var(--ink-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumbs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; flex: 1; scrollbar-width: none; }
+.crumbs button {
+  border: 0; background: none; padding: 4px 6px; border-radius: 4px; cursor: pointer;
+  color: var(--ink-2); white-space: nowrap;
+}
+.crumbs button:hover { background: var(--panel-2); color: var(--ink); }
+.crumbs button[aria-current="page"] { color: var(--ink); font-weight: 600; }
+.crumbs .sep { color: var(--ink-3); }
+.bar-actions { display: flex; gap: 6px; margin-left: auto; flex: none; }
+.btn {
+  border: 1px solid var(--rule); background: var(--block); border-radius: 6px;
+  padding: 5px 11px; cursor: pointer; white-space: nowrap; line-height: 1.3;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.icon { padding: 5px 8px; }
+.only-narrow { display: none; }
+
+.main {
+  display: grid; grid-template-columns: 250px minmax(0, 1fr) 320px; min-height: 0;
+}
+aside.side { border-right: 1px solid var(--rule); overflow: auto; background: var(--panel); min-height: 0; }
+aside.inspector { border-left: 1px solid var(--rule); overflow: auto; background: var(--panel); min-height: 0; }
+.side h2, .inspector h2 {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin: 16px 14px 6px;
+}
+.center { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; }
+
+/* ---------- tree / files ---------- */
+.tree { list-style: none; margin: 0; padding: 0 6px; }
+.tree ul { list-style: none; margin: 0; padding-left: 14px; border-left: 1px solid var(--rule); margin-left: 12px; }
+.tree button {
+  display: flex; width: 100%; align-items: baseline; gap: 6px; text-align: left;
+  border: 0; background: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;
+}
+.tree button:hover { background: var(--panel-2); }
+.tree button[aria-current="true"] { background: var(--sel-soft); }
+.tree .t-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree .t-sub { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.files { list-style: none; margin: 0 0 16px; padding: 0 6px; }
+.files button {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; width: 100%; text-align: left;
+  border: 0; background: none; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 13px;
+}
+.files button:hover { background: var(--panel-2); }
+.files .f-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files .f-kind { color: var(--ink-3); font-size: 12px; }
+.files .f-err { color: var(--err); }
+.side-note { color: var(--ink-3); font-size: 12.5px; margin: 4px 14px 14px; }
+
+/* ---------- tabs ---------- */
+.tabs {
+  display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--rule);
+  background: var(--panel); overflow-x: auto; scrollbar-width: none;
+}
+.tabs button {
+  border: 0; background: none; padding: 9px 11px 8px; cursor: pointer; color: var(--ink-2);
+  border-bottom: 2px solid transparent; white-space: nowrap;
+}
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+.tabs .count { color: var(--ink-3); font-size: 12px; margin-left: 3px; }
+.pane { min-height: 0; overflow: auto; }
+.pane[hidden] { display: none; }
+
+/* ---------- canvas ---------- */
+.canvas-wrap { position: relative; min-height: 0; background: var(--paper); overflow: hidden; }
+#canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; }
+#canvas.panning { cursor: grabbing; }
+.dot { fill: var(--grid); }
+.node rect.body { fill: var(--block); stroke: var(--ink); stroke-width: 1.25; }
+.node.hier rect.body { fill: var(--block-hier); }
+.node rect.inset { fill: none; stroke: var(--ink); stroke-width: .8; }
+.node .title { font: 600 13px var(--f-cond); fill: var(--ink); }
+.node .vlnv { font: 10.5px var(--f-mono); fill: var(--ink-3); }
+.node .hdr { stroke: var(--rule); stroke-width: 1; }
+.node { cursor: pointer; }
+.node.sel rect.body { stroke: var(--sel); stroke-width: 2.5; }
+.pin text { font: 11.5px var(--f-cond); fill: var(--ink-2); }
+.pin.bus text { fill: var(--ink); font-weight: 500; }
+.pin.nc text { fill: var(--ink-3); font-style: italic; }
+.pin line { stroke: var(--ink); stroke-width: 1.2; }
+.pin.bus line { stroke-width: 3; }
+.edge { fill: none; stroke-linecap: round; }
+.edge.bus { stroke-width: 3; }
+.edge.wire { stroke: var(--c-wire); stroke-width: 1.2; }
+.edge.mon { stroke-width: 1.6; stroke-dasharray: 5 4; }
+.edge-hit { fill: none; stroke: transparent; stroke-width: 10; cursor: pointer; }
+.stub text { font: italic 10.5px var(--f-cond); fill: var(--ink-3); }
+.stub line { stroke: var(--c-wire); stroke-width: 1.2; }
+.port path { fill: var(--block); stroke: var(--ink); stroke-width: 1.2; }
+.port.bus path { stroke-width: 2.2; }
+.port text { font: 500 11.5px var(--f-cond); fill: var(--ink); }
+.port { cursor: pointer; }
+#canvas .fam-axi { stroke: var(--c-axi); } #canvas .fam-axis { stroke: var(--c-axis); } #canvas .fam-lmb { stroke: var(--c-lmb); }
+#canvas .fam-clk { stroke: var(--c-clk); } #canvas .fam-gt { stroke: var(--c-gt); } #canvas .fam-ddr { stroke: var(--c-ddr); }
+#canvas .fam-uart { stroke: var(--c-uart); } #canvas .fam-bram { stroke: var(--c-bram); } #canvas .fam-dbg { stroke: var(--c-dbg); }
+#canvas .fam-bus { stroke: var(--c-bus); }
+svg.dim .edge:not(.hl), svg.dim .stub:not(.hl), svg.dim .port:not(.hl) { opacity: .12; }
+svg.dim .node:not(.hl) { opacity: .4; }
+svg.dim .pin:not(.hl) text { opacity: .45; }
+.edge.hl { stroke-width: 4.5; }
+.edge.wire.hl { stroke-width: 2.4; stroke: var(--ink); }
+.pin.hl text { fill: var(--ink); font-weight: 600; }
+#canvas .port.hl path { stroke: var(--sel); }
+
+.canvas-tools {
+  position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; align-items: center;
+  flex-wrap: wrap;
+}
+.canvas-tools .btn { background: var(--panel); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; background: none; padding: 5px 9px; cursor: pointer; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg-label { padding: 5px 8px 5px 10px; color: var(--ink-3); font-size: 12.5px; }
+.legend {
+  position: absolute; right: 12px; bottom: 12px; background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 6px; padding: 7px 10px; font-size: 12px; display: grid; gap: 3px; max-width: 220px;
+}
+.legend .lg-close { position: absolute; top: 2px; right: 4px; border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 15px; line-height: 1; padding: 4px; }
+.legend { padding-right: 26px; }
+.legend div { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 20px; height: 0; border-top: 3px solid; }
+.legend i.w { border-top-width: 1.2px; border-color: var(--c-wire); }
+.hint {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 12.5px; color: var(--ink-2);
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 10px; white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- empty state ---------- */
+.empty {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center;
+}
+.empty-inner { max-width: 440px; }
+.empty h1 { font-size: 22px; font-weight: 600; margin: 18px 0 6px; }
+.empty p { color: var(--ink-2); margin: 0 0 18px; }
+.empty .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.drop-over .canvas-wrap::after {
+  content: "Drop to load"; position: absolute; inset: 10px; border: 2px dashed var(--sel); border-radius: 10px;
+  display: grid; place-items: center; font-size: 18px; font-weight: 600; color: var(--ink);
+  background: var(--sel-soft); pointer-events: none;
+}
+
+/* ---------- tables ---------- */
+.doc { padding: 16px 20px 40px; max-width: 1200px; }
+.doc h3 { font-size: 15px; font-weight: 600; margin: 22px 0 8px; }
+.doc h3:first-child { margin-top: 4px; }
+.doc .lead { color: var(--ink-2); margin: 0 0 6px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--block); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--ink-2); background: var(--panel-2); position: sticky; top: 0; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+tbody tr.link { cursor: pointer; }
+tbody tr.link:hover td { background: var(--sel-soft); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.addr { table-layout: fixed; min-width: 640px; }
+table.addr col.c-seg { width: auto; } table.addr col.c-a { width: 150px; } table.addr col.c-s { width: 90px; } table.addr col.c-x { width: 96px; }
+.pill { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: 12px; background: var(--panel-2); color: var(--ink-2); white-space: nowrap; }
+.pill.hier { background: var(--sel-soft); color: var(--ink); }
+.pill.excl { background: none; border: 1px solid var(--err); color: var(--err); }
+tr.excluded td { color: var(--ink-3); }
+.swatch { display: inline-block; width: 14px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
+details summary { cursor: pointer; color: var(--ink-2); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 0; font-size: 13px; }
+.kv dt { color: var(--ink-2); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.search { width: 100%; max-width: 360px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--block); }
+.ep { white-space: nowrap; }
+.ep + .ep::before { content: ", "; color: var(--ink-3); }
+.ext-ep { font-style: italic; }
+pre.xml {
+  margin: 0; padding: 14px 16px; font: 12.5px/1.55 var(--f-mono); white-space: pre; overflow: auto;
+  background: var(--block); border: 1px solid var(--rule); border-radius: 6px; max-height: calc(100vh - 220px);
+}
+.x-tag { color: var(--c-axi); } .x-attr { color: var(--c-ddr); } .x-val { color: var(--c-lmb); } .x-com { color: var(--ink-3); }
+
+/* ---------- inspector ---------- */
+.insp { padding: 4px 16px 24px; }
+.insp h3 { font-size: 17px; font-weight: 600; margin: 14px 0 2px; overflow-wrap: anywhere; }
+.insp .what { color: var(--ink-2); margin: 0 0 12px; font-size: 13px; }
+.insp h4 { font-size: 13px; font-weight: 600; margin: 18px 0 6px; color: var(--ink-2); }
+.insp .vl { font: 12px var(--f-mono); color: var(--ink-2); overflow-wrap: anywhere; margin-bottom: 10px; }
+.insp table { font-size: 12.5px; }
+.insp td, .insp th { padding: 4px 8px; }
+.insp .actions { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.linkish { border: 0; background: none; padding: 0; color: var(--c-axi); cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
+.linkish:hover { text-decoration-color: currentColor; }
+.muted { color: var(--ink-3); }
+.err-list { color: var(--err); font-size: 12.5px; margin: 0 14px 12px; }
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 1100px) {
+  .main { grid-template-columns: 220px minmax(0, 1fr) 280px; }
+}
+@media (max-width: 860px) {
+  .main { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto; }
+  aside.side {
+    position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(300px, 85vw);
+    transform: translateX(-100%); transition: transform .2s ease; border-right: 1px solid var(--rule);
+    padding-top: env(safe-area-inset-top, 0px); box-shadow: 0 0 40px rgba(0,0,0,.2);
+  }
+  body.side-open aside.side { transform: none; }
+  aside.inspector { border-left: 0; border-top: 1px solid var(--rule); max-height: 38vh; }
+  .only-narrow { display: inline-block; }
+  .brand-meta, .brand-title, #btn-folder, .hint { display: none; }
+  header.bar { gap: 8px; padding: 6px 10px; }
+  .legend { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { aside.side { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="bar">
+    <button class="btn icon only-narrow" id="btn-side" aria-label="Show hierarchy">☰</button>
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+        <rect x="3" y="4" width="16" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="5.5" y="6.5" width="11" height="9" rx="1" fill="none" stroke="currentColor" stroke-width=".9"/>
+        <path d="M0 8h3M0 14h3M19 11h3" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <span class="brand-title">IP-XACT viewer</span>
+      <span class="brand-meta" id="brand-meta"></span>
+    </div>
+    <nav class="crumbs" id="crumbs" aria-label="Hierarchy path"></nav>
+    <div class="bar-actions">
+      <button class="btn" id="btn-open">Open files</button>
+      <button class="btn" id="btn-folder">Open folder</button>
+      <button class="btn icon" id="btn-theme" aria-label="Switch colour theme" title="Theme">◐</button>
+    </div>
+    <input type="file" id="in-files" accept=".xml" multiple hidden>
+    <input type="file" id="in-folder" webkitdirectory multiple hidden>
+  </header>
+
+  <div class="main">
+    <aside class="side" id="side" aria-label="Design hierarchy and files">
+      <h2>Hierarchy</h2>
+      <ul class="tree" id="tree"></ul>
+      <p class="side-note" id="tree-note"></p>
+      <h2>Loaded files</h2>
+      <ul class="files" id="files"></ul>
+      <div class="err-list" id="errors"></div>
+    </aside>
+
+    <section class="center">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-tab="diagram" aria-selected="true">Diagram</button>
+        <button role="tab" data-tab="boundary" aria-selected="false">Interfaces and ports</button>
+        <button role="tab" data-tab="instances" aria-selected="false">Instances</button>
+        <button role="tab" data-tab="connections" aria-selected="false">Connections</button>
+        <button role="tab" data-tab="address" aria-selected="false">Address map</button>
+        <button role="tab" data-tab="xml" aria-selected="false">XML</button>
+      </div>
+      <div class="pane canvas-wrap" id="pane-diagram" role="tabpanel">
+        <svg id="canvas" aria-label="Block diagram" role="img">
+          <defs>
+            <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle class="dot" cx="1" cy="1" r="1"/>
+            </pattern>
+          </defs>
+          <g id="vp"></g>
+        </svg>
+        <div class="canvas-tools" id="canvas-tools" hidden>
+          <button class="btn icon" id="z-fit" title="Fit to view (F)">Fit</button>
+          <button class="btn icon" id="z-out" aria-label="Zoom out" title="Zoom out (−)">−</button>
+          <button class="btn icon" id="z-in" aria-label="Zoom in" title="Zoom in (+)">+</button>
+          <button class="btn" id="btn-key" aria-pressed="true" title="Show or hide the colour key">Key</button>
+          <span class="seg" role="group" aria-label="Wire nets">
+            <span class="seg-label">Wires</span>
+            <button data-wires="hidden" aria-pressed="false">Hide</button>
+            <button data-wires="auto" aria-pressed="true">Auto</button>
+            <button data-wires="lines" aria-pressed="false">All</button>
+          </span>
+        </div>
+        <div class="legend" id="legend" hidden></div>
+        <div class="hint" id="hint" hidden></div>
+        <div class="empty" id="empty">
+          <div class="empty-inner">
+            <svg width="120" height="70" viewBox="0 0 120 70" aria-hidden="true">
+              <rect x="30" y="10" width="60" height="50" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <rect x="35" y="15" width="50" height="40" rx="2" fill="none" stroke="currentColor" stroke-width=".8"/>
+              <path d="M0 22h30M0 48h30" stroke="var(--c-axi)" stroke-width="3"/>
+              <path d="M90 35h30" stroke="var(--c-lmb)" stroke-width="3"/>
+            </svg>
+            <h1>Open an IP-XACT design</h1>
+            <p>Load the component and design XML files for a block design, for example the output of <span class="mono">make bd2ipxact</span>. Xilinx <span class="mono">component.xml</span> files can be added too, so leaf IP pins are drawn on the correct side.</p>
+            <div class="row">
+              <button class="btn primary" id="e-folder">Open folder</button>
+              <button class="btn" id="e-files">Open files</button>
+            </div>
+            <p class="muted" style="margin-top:14px">or drop files anywhere on this page</p>
+          </div>
+        </div>
+      </div>
+      <div class="pane" id="pane-boundary" role="tabpanel" hidden></div>
+      <div class="pane" id="pane-instances" role="tabpanel" hidden></div>
+      <div class="pane" id="pane-connections" role="tabpanel" hidden></div>
+      <div class="pane" id="pane-address" role="tabpanel" hidden></div>
+      <div class="pane" id="pane-xml" role="tabpanel" hidden></div>
+    </section>
+
+    <aside class="inspector" id="inspector" aria-label="Details" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script type="application/json" id="ipxact-bundle">null</script>
+<script>
+"use strict";
+/* =====================================================================
+ * IP-XACT viewer
+ * Parses IEEE 1685-2014 (and best-effort 1685-2009 / 2022) components
+ * and designs in the browser and draws hierarchical block diagrams.
+ * ===================================================================== */
+const VBD_NS = "http://user.org/ipxact/vivado-bd-extensions/1.0";
+const MODES = ["master", "slave", "system", "mirroredMaster", "mirroredSlave", "mirroredSystem", "monitor"];
+const FAMILY = {
+  axi: "AXI memory-mapped", axis: "AXI-Stream", lmb: "LMB", clk: "Clock", gt: "Transceiver serial",
+  ddr: "DDR memory", uart: "UART", bram: "BRAM", dbg: "Debug", bus: "Other bus"
+};
+
+/* ---------- small helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const kids = (e, n) => e ? [...e.children].filter(c => c.localName === n) : [];
+const kid = (e, n) => e ? [...e.children].find(c => c.localName === n) || null : null;
+const txt = (e, n) => { const k = kid(e, n); return k ? k.textContent.trim() : null; };
+const desc = (e, n) => e ? [...e.getElementsByTagNameNS("*", n)] : [];
+const attr = (e, n) => { if (!e) return null; for (const a of e.attributes) if (a.localName === n) return a.value; return null; };
+const vlnvOf = e => {
+  if (!e) return null;
+  if (attr(e, "vendor") !== null) return ["vendor", "library", "name", "version"].map(k => attr(e, k) || "");
+  const v = ["vendor", "library", "name", "version"].map(k => txt(e, k) || "");
+  return v[2] ? v : null;
+};
+const vkey = v => v ? v.join(":") : "";
+const vbd = (parent) => kid(parent, "vendorExtensions") ? [...kid(parent, "vendorExtensions").children].filter(c => c.namespaceURI === VBD_NS) : [];
+const vbdProps = (el, tag = "property") => [...el.children].filter(c => c.localName === tag).map(c => [attr(c, "name"), c.textContent]);
+function stdOf(ns) {
+  if (!ns) return "unknown";
+  if (ns.includes("1685-2022")) return "IEEE 1685-2022";
+  if (ns.includes("1685-2014")) return "IEEE 1685-2014";
+  if (ns.includes("1685-2009")) return "IEEE 1685-2009";
+  const m = ns.match(/SPIRIT\/([\d.]+)/); return m ? "SPIRIT " + m[1] : ns;
+}
+function fmtSize(r) {
+  const u = ["B", "KiB", "MiB", "GiB", "TiB"]; let i = 0; let v = Number(r);
+  while (v >= 1024 && i < u.length - 1 && v % 1024 === 0) { v /= 1024; i++; }
+  return v + " " + u[i];
+}
+function toBig(s) { try { return BigInt(String(s).trim().replace(/^'h/i, "0x")); } catch { return null; } }
+
+/* =====================================================================
+ * Library: parsing
+ * ===================================================================== */
+const lib = { comps: new Map(), designs: new Map(), dcfgs: new Map(), others: [], files: [], errors: [] };
+
+function parseFile(name, text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  const pe = doc.getElementsByTagName("parsererror")[0];
+  if (pe) { lib.files.push({ name, kind: "error" }); lib.errors.push(`${name}: not well-formed XML`); return; }
+  const root = doc.documentElement, kind = root.localName, std = stdOf(root.namespaceURI);
+  const v = vlnvOf(root);
+  const f = { name, kind, std, text, key: vkey(v) };
+  lib.files.push(f);
+  try {
+    if (kind === "component") lib.comps.set(f.key, parseComponent(root, v, f));
+    else if (kind === "design") lib.designs.set(f.key, parseDesign(root, v, f));
+    else if (kind === "designConfiguration") {
+      const dr = kid(root, "designRef"); lib.dcfgs.set(f.key, dr ? vkey(vlnvOf(dr)) : null);
+    } else lib.others.push(f);
+  } catch (e) { lib.errors.push(`${name}: ${e.message}`); f.kind = "error"; }
+}
+
+function parseComponent(root, v, f) {
+  const c = { v, key: f.key, file: f, busIfs: [], ports: [], params: [], ext: {}, memoryMaps: [],
+    description: txt(root, "description"), designKey: null, hierKey: null };
+  for (const bi of kids(kid(root, "busInterfaces"), "busInterface")) {
+    const mode = [...bi.children].map(x => x.localName).find(n => MODES.includes(n)) || null;
+    let abs = null;
+    const ats = kid(bi, "abstractionTypes");
+    if (ats) abs = vlnvOf(desc(ats, "abstractionRef")[0]);
+    else if (kid(bi, "abstractionType")) abs = vlnvOf(kid(bi, "abstractionType"));
+    c.busIfs.push({
+      name: txt(bi, "name"), mode, busType: vlnvOf(kid(bi, "busType")), abs,
+      params: kids(kid(bi, "parameters"), "parameter").map(p => [txt(p, "name"), txt(p, "value")])
+    });
+  }
+  const model = kid(root, "model");
+  for (const p of kids(kid(model, "ports"), "port")) {
+    const w = kid(p, "wire");
+    if (!w) { c.ports.push({ name: txt(p, "name"), dir: "transactional", props: [] }); continue; }
+    const vec = kid(kid(w, "vectors"), "vector") || kid(w, "vector");
+    const ext = vbd(p);
+    const st = ext.find(x => x.localName === "signalType");
+    c.ports.push({
+      name: txt(p, "name"), dir: txt(w, "direction") || "in",
+      left: vec ? txt(vec, "left") : null, right: vec ? txt(vec, "right") : null,
+      type: st ? st.textContent : null,
+      props: ext.filter(x => x.localName === "property").map(x => [attr(x, "name"), x.textContent])
+    });
+  }
+  const insts = kid(model, "instantiations");
+  for (const view of kids(kid(model, "views"), "view")) {
+    const dref = txt(view, "designInstantiationRef");
+    if (dref) {
+      const di = kids(insts, "designInstantiation").find(d => txt(d, "name") === dref);
+      if (di) c.designKey = vkey(vlnvOf(kid(di, "designRef")));
+    }
+    const cref = txt(view, "designConfigurationInstantiationRef");
+    if (cref) {
+      const di = kids(insts, "designConfigurationInstantiation").find(d => txt(d, "name") === cref);
+      if (di) c.hierKey = vkey(vlnvOf(kid(di, "designConfigurationRef")));
+    }
+    const hr = kid(view, "hierarchyRef");                 // 1685-2009
+    if (hr) c.hierKey = vkey(vlnvOf(hr));
+  }
+  c.params = kids(kid(root, "parameters"), "parameter").map(p => [txt(p, "name"), txt(p, "value")]);
+  for (const x of vbd(root)) c.ext[x.localName] = x.textContent;
+  for (const mm of kids(kid(root, "memoryMaps"), "memoryMap")) {
+    c.memoryMaps.push({
+      name: txt(mm, "name"),
+      blocks: kids(mm, "addressBlock").map(b => ({ name: txt(b, "name"), base: txt(b, "baseAddress"), range: txt(b, "range"), width: txt(b, "width") }))
+    });
+  }
+  return c;
+}
+
+function parseDesign(root, v, f) {
+  const d = { v, key: f.key, file: f, instances: [], inter: [], monitors: [], adhoc: [], addr: [], pinProps: [], intfNetAttrs: [], raw: [] };
+  for (const ci of kids(kid(root, "componentInstances"), "componentInstance")) {
+    const ext = vbd(ci);
+    const g = n => { const x = ext.find(e => e.localName === n); return x ? x.textContent : null; };
+    d.instances.push({
+      name: txt(ci, "instanceName"), ref: vlnvOf(kid(ci, "componentRef")),
+      cfg: desc(ci, "configurableElementValue").map(x => [attr(x, "referenceId"), x.textContent.trim()]),
+      cellType: g("cellType"), moduleRef: g("moduleReference"), description: txt(ci, "description")
+    });
+  }
+  for (const ic of (kid(root, "interconnections") ? [...kid(root, "interconnections").children] : [])) {
+    if (ic.localName === "interconnection") {
+      const eps = [];
+      for (const e of ic.children) {
+        if (e.localName === "activeInterface") eps.push({ inst: attr(e, "componentRef"), pin: attr(e, "busRef") });
+        else if (e.localName === "hierInterface") eps.push({ ext: attr(e, "busRef") });
+      }
+      d.inter.push({ name: txt(ic, "name"), eps });
+    } else if (ic.localName === "monitorInterconnection") {
+      const m = kid(ic, "monitoredActiveInterface");
+      d.monitors.push({
+        name: txt(ic, "name"), monitored: { inst: attr(m, "componentRef"), pin: attr(m, "busRef") },
+        mons: kids(ic, "monitorInterface").map(x => ({ inst: attr(x, "componentRef"), pin: attr(x, "busRef") }))
+      });
+    }
+  }
+  for (const hc of kids(kid(root, "hierConnections"), "hierConnection")) {       // 1685-2009
+    const ai = kid(hc, "activeInterface");
+    d.inter.push({ name: attr(hc, "interfaceRef"), eps: [{ inst: attr(ai, "componentRef"), pin: attr(ai, "busRef") }, { ext: attr(hc, "interfaceRef") }] });
+  }
+  for (const ah of kids(kid(root, "adHocConnections"), "adHocConnection")) {
+    const eps = [];
+    for (const r of desc(ah, "internalPortReference")) eps.push({ inst: attr(r, "componentRef"), pin: attr(r, "portRef") });
+    for (const r of desc(ah, "externalPortReference")) eps.push({ ext: attr(r, "portRef") });
+    const ext = vbd(ah);
+    d.adhoc.push({
+      name: txt(ah, "name"), eps, tied: txt(ah, "tiedValue"),
+      attrs: ext.filter(x => x.localName === "netAttribute").map(x => [attr(x, "name"), x.textContent])
+    });
+  }
+  for (const x of vbd(root)) {
+    if (x.localName === "addressMap") for (const a of x.children)
+      d.addr.push({ kind: a.localName, space: attr(a, "addressSpace"), segment: attr(a, "segment"), offset: attr(a, "offset"), range: attr(a, "range") });
+    else if (x.localName === "pinProperties") d.pinProps.push({ path: attr(x, "path"), props: vbdProps(x) });
+    else if (x.localName === "intfNetAttributes") d.intfNetAttrs.push({ net: attr(x, "net"), props: vbdProps(x) });
+    else if (x.localName === "tcl") d.raw.push(x.textContent);
+  }
+  return d;
+}
+
+function designOf(c) {
+  if (!c) return null;
+  if (c.designKey && lib.designs.has(c.designKey)) return lib.designs.get(c.designKey);
+  if (c.hierKey) {
+    if (lib.designs.has(c.hierKey)) return lib.designs.get(c.hierKey);
+    const dk = lib.dcfgs.get(c.hierKey);
+    if (dk && lib.designs.has(dk)) return lib.designs.get(dk);
+  }
+  return null;
+}
+function roots() {
+  const hier = [...lib.comps.values()].filter(c => designOf(c));
+  const used = new Set();
+  for (const d of lib.designs.values()) for (const i of d.instances) used.add(vkey(i.ref));
+  let r = hier.filter(c => !used.has(c.key));
+  r.sort((a, b) => (b.ext.bdName ? 1 : 0) - (a.ext.bdName ? 1 : 0) || a.v[2].localeCompare(b.v[2]));
+  return r;
+}
+
+/* =====================================================================
+ * View model: pins, roles (which side), families (colour)
+ * ===================================================================== */
+const SRC_BUS = [/(^|_)M\d*_AXIS?(_|$)/i, /^M\d\d_AXI/, /^m_axi/i, /^AXIS_TX$/, /(^|_)LMB_M$/, /MBDEBUG/, /_TX$/, /^M_/, /BRAM_PORT$/];
+const SNK_BUS = [/(^|_)S\d*_AXIS?(_|$)/i, /^S\d\d_AXI/, /^s_axi/i, /^SLOT_/, /^AXIS_RX$/, /SLMB|LMB_Sl/, /_RX$/, /^S_/];
+const SRC_WIRE = /(^|_)(dout|Res|q|o|out)$|_out(_\d+)?$|^clk_\d+M$|_ui_clk(_sync_rst)?$|peripheral_aresetn|peripheral_reset|interconnect_aresetn|bus_struct_reset|mb_reset|Debug_SYS_Rst|channel_up$|lane_up$|gpio_io_o|_io_o$|locked$|link_status_out/i;
+
+function roleFromMode(mode) {
+  if (!mode) return null;
+  return (mode === "master" || mode === "mirroredSlave" || mode === "system") ? "src" : "snk";
+}
+function famFromName(n) {
+  n = (n || "").toLowerCase();
+  if (/axis|axi_?stream/.test(n)) return "axis";
+  if (/aximm|axi/.test(n)) return "axi";
+  if (/lmb/.test(n)) return "lmb";
+  if (/diff_clock|clock|refclk|clk/.test(n)) return "clk";
+  if (/gt_|serial|transceiver|_tx$|_rx$|^gt/.test(n)) return "gt";
+  if (/ddr/.test(n)) return "ddr";
+  if (/uart/.test(n)) return "uart";
+  if (/bram/.test(n)) return "bram";
+  if (/debug|mbdebug/.test(n)) return "dbg";
+  return null;
+}
+
+function buildView(comp) {
+  const design = designOf(comp);
+  const V = { comp, design, nodes: [], nodeMap: new Map(), ext: new Map(), nets: [], netMap: new Map() };
+  // boundary ("inside view" roles: a slave port feeds the design => source on the left)
+  for (const b of comp.busIfs) {
+    const r = roleFromMode(b.mode);
+    V.ext.set("b:" + b.name, { id: "x:b:" + b.name, name: b.name, kind: "bus", item: b,
+      role: r ? (r === "src" ? "snk" : "src") : null, fam: famFromName(b.busType && b.busType[2]) || famFromName(b.name) || "bus", nets: [] });
+  }
+  for (const p of comp.ports) {
+    V.ext.set("w:" + p.name, { id: "x:w:" + p.name, name: p.name, kind: "wire", item: p,
+      role: p.dir === "out" ? "snk" : "src", nets: [] });
+  }
+  if (!design) return V;
+
+  design.instances.forEach((inst, idx) => {
+    const c = lib.comps.get(vkey(inst.ref)) || null;
+    const hier = !!designOf(c);
+    const node = { id: inst.name, inst, comp: c, hier, idx, pins: new Map() };
+    if (c && hier) {       // hierarchical: show the whole boundary
+      for (const b of c.busIfs) addPin(node, b.name, "bus", b);
+      for (const p of c.ports) addPin(node, p.name, "wire", p);
+    }
+    V.nodes.push(node); V.nodeMap.set(inst.name, node);
+  });
+
+  function addPin(node, name, kind, def) {
+    let p = node.pins.get(name);
+    if (p) return p;
+    const c = node.comp;
+    if (!def && c) def = kind === "bus" ? c.busIfs.find(b => b.name === name) : c.ports.find(x => x.name === name);
+    p = { id: node.id + "/" + name, node, name, kind, def, nets: [], role: null, fam: null, known: false };
+    if (def) {
+      p.known = true;
+      if (kind === "bus") { p.role = roleFromMode(def.mode); p.fam = famFromName(def.busType && def.busType[2]); }
+      else p.role = def.dir === "out" ? "src" : "snk";
+    }
+    node.pins.set(name, p);
+    return p;
+  }
+  function endpoint(ep, kind) {
+    if (ep.ext !== undefined) {
+      const k = (kind === "wire" ? "w:" : "b:") + ep.ext;
+      if (!V.ext.has(k)) V.ext.set(k, { id: "x:" + k, name: ep.ext, kind, missing: true, role: kind === "wire" ? "src" : null, fam: null, nets: [] });
+      return V.ext.get(k);
+    }
+    let node = V.nodeMap.get(ep.inst);
+    if (!node) {   // reference to an undeclared instance: show it anyway
+      node = { id: ep.inst, inst: { name: ep.inst, ref: null, cfg: [] }, comp: null, hier: false, idx: V.nodes.length, pins: new Map(), missing: true };
+      V.nodes.push(node); V.nodeMap.set(ep.inst, node);
+    }
+    return addPin(node, ep.pin, kind);
+  }
+  const mk = (id, name, kind, src) => {
+    const n = { id, name, kind, src, eps: [], fam: null };
+    V.nets.push(n); V.netMap.set(id, n); return n;
+  };
+  for (const ic of design.inter) {
+    const n = mk("b:" + ic.name, ic.name, "bus", ic);
+    for (const ep of ic.eps) { const e = endpoint(ep, "bus"); n.eps.push(e); e.nets.push(n); }
+  }
+  for (const ah of design.adhoc) {
+    const n = mk("w:" + ah.name, ah.name, "wire", ah);
+    for (const ep of ah.eps) { const e = endpoint(ep, "wire"); n.eps.push(e); e.nets.push(n); }
+  }
+  for (const m of design.monitors) {
+    const n = mk("m:" + m.name, m.name, "mon", m);
+    const target = endpoint(m.monitored, "bus");
+    n.monitored = target.nets.find(x => x.kind === "bus") || null;
+    n.eps.push(target);
+    for (const mi of m.mons) { const e = endpoint(mi, "bus"); e.role = e.role || "snk"; n.eps.push(e); e.nets.push(n); }
+  }
+
+  // role inference: known roles propagate across a net, then name heuristics
+  const infer = () => {
+    let changed = false;
+    for (const n of V.nets) {
+      if (n.kind === "mon") continue;
+      const hasSrc = n.eps.some(e => e.role === "src"), hasSnk = n.eps.some(e => e.role === "snk");
+      for (const e of n.eps) {
+        if (e.role) continue;
+        if (hasSrc) { e.role = "snk"; changed = true; }
+        else if (hasSnk && n.eps.length === 2) { e.role = "src"; changed = true; }
+      }
+    }
+    return changed;
+  };
+  while (infer());
+  // 1) firm rules from the IP type, 2) pins whose names say "output", 3) default input,
+  // propagating across nets after each step so one known end fixes the other
+  const pinsAll = () => V.nodes.flatMap(n => [...n.pins.values()].map(p => [n, p]));
+  for (const [node, p] of pinsAll()) {
+    const ip = node.inst.ref ? node.inst.ref[2] : "";
+    if (!p.role && p.kind === "bus" && /^(blk_mem_gen|system_ila|ila)$/.test(ip)) p.role = "snk";
+  }
+  while (infer());
+  for (const [, p] of pinsAll()) {
+    if (p.role) continue;
+    const src = p.kind === "bus"
+      ? SRC_BUS.some(r => r.test(p.name)) && !SNK_BUS.slice(0, 3).some(r => r.test(p.name))
+      : SRC_WIRE.test(p.name);
+    if (src) p.role = "src";
+  }
+  while (infer());
+  for (const [, p] of pinsAll()) if (!p.role) p.role = "snk";
+  for (const x of V.ext.values()) if (!x.role) x.role = "src";
+
+  // families: net colour from any endpoint that knows its bus type
+  for (const n of V.nets) {
+    if (n.kind === "wire") continue;
+    const base = n.kind === "mon" ? n.monitored : n;
+    n.fam = (base && base.eps.map(e => e.fam).find(Boolean)) || null;
+    if (!n.fam && base) n.fam = base.eps.map(e => famFromName(e.name)).find(Boolean) || null;
+    if (!n.fam) n.fam = famFromName(n.name) || "bus";
+    for (const e of n.eps) if (!e.fam) e.fam = n.fam;
+  }
+  for (const node of V.nodes) for (const p of node.pins.values()) if (p.kind === "bus" && !p.fam) p.fam = famFromName(p.name) || "bus";
+  return V;
+}
+
+/* =====================================================================
+ * Layout: layered, left-to-right (sources right, sinks left)
+ * ===================================================================== */
+const G = { pinH: 18, head: 42, gapX: 150, gapY: 30, extW: 0, stub: 12 };
+const measure = (() => {
+  const cv = document.createElement("canvas").getContext("2d");
+  return (s, font) => { cv.font = font; return cv.measureText(s).width; };
+})();
+const FONT_PIN = "11.5px 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif";
+const FONT_TITLE = "600 13px 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif";
+const FONT_MONO = "10.5px 'IBM Plex Mono', monospace";
+
+function layout(V, wireMode) {
+  const nodes = V.nodes;
+  const drawNet = n => n.kind !== "wire" || wireMode === "lines" || (wireMode === "auto" && n.eps.length <= 3);
+  // graph edges between instances
+  const succ = new Map(nodes.map(n => [n, new Set()])), pred = new Map(nodes.map(n => [n, new Set()]));
+  const soft = new Map(nodes.map(n => [n, { succ: new Set(), pred: new Set() }]));
+  for (const n of V.nets) {
+    if (n.kind === "mon") continue;
+    const primary = n.kind === "bus" && n.fam !== "dbg";
+    if (!primary && n.eps.length > 4) continue;              // global clock / reset nets
+    const srcs = n.eps.filter(e => e.node && e.role === "src"), snks = n.eps.filter(e => e.node && e.role !== "src");
+    for (const s of srcs) for (const t of snks) if (s.node !== t.node) {
+      if (primary) { succ.get(s.node).add(t.node); pred.get(t.node).add(s.node); }
+      else { soft.get(s.node).succ.add(t.node); soft.get(t.node).pred.add(s.node); }
+    }
+  }
+  // break cycles (DFS back edges)
+  const state = new Map(), back = new Set();
+  const dfs = n => { state.set(n, 1); for (const m of succ.get(n)) { if (state.get(m) === 1) back.add(n.id + ">" + m.id); else if (!state.get(m)) dfs(m); } state.set(n, 2); };
+  for (const n of nodes) if (!state.get(n)) dfs(n);
+  const isBack = (a, b) => back.has(a.id + ">" + b.id);
+  // longest-path layering
+  const layer = new Map(), indeg = new Map();
+  for (const n of nodes) indeg.set(n, [...pred.get(n)].filter(p => !isBack(p, n)).length);
+  const q = nodes.filter(n => indeg.get(n) === 0);
+  for (const n of q) layer.set(n, 0);
+  while (q.length) {
+    const n = q.shift();
+    for (const m of succ.get(n)) {
+      if (isBack(n, m)) continue;
+      layer.set(m, Math.max(layer.get(m) || 0, layer.get(n) + 1));
+      indeg.set(m, indeg.get(m) - 1);
+      if (indeg.get(m) === 0) q.push(m);
+    }
+  }
+  for (const n of nodes) if (!layer.has(n)) layer.set(n, 0);
+  // push pure sources right, next to their first consumer
+  for (let pass = 0; pass < 3; pass++) for (const n of nodes) {
+    const outs = [...succ.get(n)].filter(m => !isBack(n, m));
+    if (outs.length) { const lim = Math.min(...outs.map(m => layer.get(m))) - 1; if (lim > layer.get(n)) layer.set(n, lim); }
+  }
+  // blocks with no data-bus edges (resets, constants, debug) sit next to what they talk to
+  const loose = nodes.filter(n => !succ.get(n).size && !pred.get(n).size);
+  for (let pass = 0; pass < 3; pass++) for (const n of loose) {
+    const outs = [...soft.get(n).succ].filter(m => !loose.includes(m) || pass > 0);
+    const ins = [...soft.get(n).pred].filter(m => !loose.includes(m) || pass > 0);
+    if (outs.length) layer.set(n, Math.max(0, Math.min(...outs.map(m => layer.get(m))) - 1));
+    else if (ins.length) layer.set(n, Math.max(...ins.map(m => layer.get(m))) + 1);
+  }
+  for (const n of loose) { for (const m of soft.get(n).succ) succ.get(n).add(m); for (const m of soft.get(n).pred) pred.get(n).add(m); }
+  const L = Math.max(0, ...nodes.map(n => layer.get(n)));
+  const layers = Array.from({ length: L + 1 }, () => []);
+  for (const n of nodes) layers[layer.get(n)].push(n);
+  for (const l of layers) l.sort((a, b) => a.idx - b.idx);
+  // barycentre ordering
+  const nbr = n => [...succ.get(n), ...pred.get(n)];
+  for (let it = 0; it < 8; it++) {
+    const pos = new Map(); layers.forEach(l => l.forEach((n, i) => pos.set(n, i / Math.max(1, l.length - 1))));
+    for (const l of layers) {
+      const bc = new Map(l.map(n => { const ns = nbr(n).filter(m => pos.has(m)); return [n, ns.length ? ns.reduce((s, m) => s + pos.get(m), 0) / ns.length : pos.get(n)]; }));
+      l.sort((a, b) => bc.get(a) - bc.get(b));
+    }
+  }
+  // node sizes
+  for (const n of nodes) {
+    const pins = [...n.pins.values()];
+    n.left = pins.filter(p => p.role !== "src"); n.right = pins.filter(p => p.role === "src");
+    const lw = Math.max(0, ...n.left.map(p => measure(p.name, FONT_PIN)));
+    const rw = Math.max(0, ...n.right.map(p => measure(p.name, FONT_PIN)));
+    const sub = n.inst.ref ? `${n.inst.ref[2]}:${n.inst.ref[3]}` : (n.inst.moduleRef || "");
+    n.sub = n.inst.moduleRef ? `module ${n.inst.moduleRef}` : sub;
+    n.w = Math.ceil(Math.max(150, lw + rw + 44, measure(n.id, FONT_TITLE) + 36, measure(n.sub, FONT_MONO) + 24));
+    n.h = G.head + Math.max(1, n.left.length, n.right.length) * G.pinH + 8;
+  }
+  // positions
+  const extL = [...V.ext.values()].filter(x => x.role === "src"), extR = [...V.ext.values()].filter(x => x.role !== "src");
+  const extW = xs => Math.max(0, ...xs.map(x => measure(x.name, FONT_PIN) + 34));
+  const wL = extW(extL), wR = extW(extR);
+  let x = wL ? wL + G.gapX : 0;
+  const colX = [];
+  for (const l of layers) {
+    const w = Math.max(0, ...l.map(n => n.w));
+    colX.push(x);
+    const tot = l.reduce((s, n) => s + n.h, 0) + G.gapY * (l.length - 1);
+    let y = -tot / 2;
+    for (const n of l) { n.x = x + (w - n.w) / 2; n.y = y; y += n.h + G.gapY; }
+    x += w + G.gapX;
+  }
+  // vertical relaxation toward connected neighbours (keeps order, avoids overlap)
+  const pinY = p => p.node ? p.node.y + G.head + (p.node.left.includes(p) ? p.node.left.indexOf(p) : p.node.right.indexOf(p)) * G.pinH + G.pinH / 2 : p.y;
+  for (let it = 0; it < 6; it++) {
+    for (const l of layers) {
+      const mid = nodes.reduce((a, n) => a + n.y + n.h / 2, 0) / Math.max(1, nodes.length);
+      for (const n of l) {
+        const pull = narrow => {
+          const ys = [];
+          for (const p of n.pins.values()) for (const net of p.nets) if (!narrow || net.kind === "bus" || net.eps.length <= 3)
+            for (const e of net.eps) if (e.node && e.node !== n) ys.push(pinY(e) - (pinY(p) - n.y));
+          return ys;
+        };
+        let ys = pull(true); if (!ys.length) ys = pull(false);
+        n.ty = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : mid - n.h / 2;
+      }
+      // place in order, pushing down on overlap, then shift block to minimise displacement
+      let y = -Infinity;
+      for (const n of l) { n.y = Math.max(n.ty, y); y = n.y + n.h + G.gapY; }
+      const shift = l.reduce((s, n) => s + (n.ty - n.y), 0) / Math.max(1, l.length);
+      let lim = Infinity;
+      for (let i = l.length - 1; i >= 0; i--) { const n = l[i]; n.y = Math.min(n.y + shift, lim); lim = n.y - G.gapY - (l[i - 1] ? l[i - 1].h : 0); }
+      for (let i = 1; i < l.length; i++) if (l[i].y < l[i - 1].y + l[i - 1].h + G.gapY) l[i].y = l[i - 1].y + l[i - 1].h + G.gapY;
+    }
+  }
+  // order pins on each side by the height of what they connect to
+  const partnerY = p => {
+    const ys = [];
+    for (const net of p.nets) for (const e of net.eps) if (e !== p) ys.push(e.node ? e.node.y + e.node.h / 2 : (e.y ?? 0));
+    return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : Infinity;
+  };
+  for (const n of nodes) {
+    const key = p => (p.nets.length ? 0 : 1e9) + (p.kind === "bus" ? 0 : 5e8) + partnerY(p);
+    n.left.sort((a, b) => key(a) - key(b)); n.right.sort((a, b) => key(a) - key(b));
+    n.left.forEach((p, i) => { p.x = n.x; p.y = n.y + G.head + i * G.pinH + G.pinH / 2; p.side = "L"; });
+    n.right.forEach((p, i) => { p.x = n.x + n.w; p.y = n.y + G.head + i * G.pinH + G.pinH / 2; p.side = "R"; });
+  }
+  // boundary ports placed at the height of what they connect to
+  const placeExt = (xs, xpos, side) => {
+    for (const e of xs) {
+      const ys = [];
+      for (const net of e.nets) for (const o of net.eps) if (o !== e && o.node) ys.push(o.y);
+      e.ty = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
+    }
+    xs.sort((a, b) => a.ty - b.ty || (a.kind === "bus" ? -1 : 1));
+    let y = -Infinity;
+    for (const e of xs) { e.y = Math.max(e.ty, y); y = e.y + 26; }
+    for (const e of xs) { e.w = measure(e.name, FONT_PIN) + 34; e.side = side; e.x = side === "L" ? xpos - e.w : xpos; }
+  };
+  placeExt(extL, wL, "L");
+  placeExt(extR, x - G.gapX + G.gapX * 0.9, "R");
+  V.extL = extL; V.extR = extR; V.drawNet = drawNet;
+  // bounds
+  const xs = [], ys = [];
+  for (const n of nodes) { xs.push(n.x, n.x + n.w); ys.push(n.y, n.y + n.h); }
+  for (const e of [...extL, ...extR]) { xs.push(e.x, e.x + e.w); ys.push(e.y - 12, e.y + 12); }
+  V.bbox = xs.length ? { x0: Math.min(...xs) - 60, y0: Math.min(...ys) - 60, x1: Math.max(...xs) + 60, y1: Math.max(...ys) + 60 } : { x0: -200, y0: -150, x1: 200, y1: 150 };
+  return V;
+}
+
+/* ---------- symbol-only view for a component without a design ---------- */
+function symbolView(comp) {
+  const node = { id: comp.v[2], inst: { name: comp.v[2], ref: comp.v, cfg: [] }, comp, hier: false, idx: 0, pins: new Map(), symbol: true };
+  for (const b of comp.busIfs) node.pins.set(b.name, { id: "s/" + b.name, node, name: b.name, kind: "bus", def: b, nets: [], role: roleFromMode(b.mode) || "snk", fam: famFromName(b.busType && b.busType[2]) || famFromName(b.name) || "bus", known: true });
+  for (const p of comp.ports) node.pins.set(p.name, { id: "s/" + p.name, node, name: p.name, kind: "wire", def: p, nets: [], role: p.dir === "out" ? "src" : "snk", known: true });
+  const V = { comp, design: null, nodes: [node], nodeMap: new Map([[node.id, node]]), ext: new Map(), nets: [], netMap: new Map(), symbol: true };
+  return layout(V, "auto");
+}
+
+/* =====================================================================
+ * Rendering (SVG)
+ * ===================================================================== */
+const svg = $("#canvas"), vp = $("#vp");
+const NS = "http://www.w3.org/2000/svg";
+let V = null;                       // current view
+const ui = { path: [], tab: "diagram", wires: "auto", sel: null, tf: { k: 1, x: 0, y: 0 }, filter: "", key: true };
+try { ui.key = localStorage.getItem("ipxact-viewer-key") !== "0"; } catch { }
+function setKey(on) {
+  ui.key = on; $("#legend").hidden = !on; $("#btn-key").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("ipxact-viewer-key", on ? "1" : "0"); } catch { }
+}
+
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function curve(x1, y1, x2, y2) {
+  const dx = Math.max(40, Math.abs(x2 - x1) / 2);
+  if (x2 >= x1 + 20) return `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
+  const k = 70 + Math.abs(y2 - y1) * 0.15;         // backward edge: loop around
+  return `M${x1},${y1} C${x1 + k},${y1} ${x2 - k},${y2} ${x2},${y2}`;
+}
+const pt = e => {
+  if (e.node) return e.side === "R" ? [e.x + G.stub, e.y] : [e.x - G.stub, e.y];
+  return e.side === "L" ? [e.x + e.w, e.y] : [e.x, e.y];
+};
+
+function render() {
+  vp.innerHTML = "";
+  if (!V) return;
+  const b = V.bbox;
+  el("rect", { x: b.x0 - 4000, y: b.y0 - 4000, width: b.x1 - b.x0 + 8000, height: b.y1 - b.y0 + 8000, fill: "url(#dots)" }, vp);
+  const gE = el("g", {}, vp), gS = el("g", {}, vp), gN = el("g", {}, vp), gX = el("g", {}, vp);
+  const fams = new Set();
+  let hasWire = false;
+
+  // edges
+  for (const n of V.nets) {
+    if (n.kind === "mon") {
+      const base = n.monitored; if (!base) continue;
+      const src = base.eps.find(e => e.role === "src") || base.eps[0];
+      const [x1, y1] = pt(src);
+      for (const m of n.eps.slice(1)) {
+        const [x2, y2] = pt(m);
+        const d = curve(x1, y1, x2, y2);
+        el("path", { d, class: `edge mon fam-${n.fam}`, "data-net": n.id }, gE);
+        el("path", { d, class: "edge-hit", "data-net": n.id }, gE);
+      }
+      continue;
+    }
+    if (n.kind === "wire" && ui.wires === "hidden") continue;
+    if (n.kind === "wire" && !V.drawNet(n)) {         // net labels instead of lines
+      hasWire = true;
+      for (const e of n.eps) {
+        const [x, y] = pt(e);
+        const g = el("g", { class: "stub", "data-net": n.id }, gS);
+        const dir = (e.node ? e.side === "R" : e.side === "L") ? 1 : -1;
+        el("line", { x1: x, y1: y, x2: x + dir * 18, y2: y }, g);
+        el("text", { x: x + dir * 22, y: y + 3.5, "text-anchor": dir > 0 ? "start" : "end" }, g, n.name);
+        el("line", { x1: x, y1: y, x2: x + dir * 18, y2: y, class: "edge-hit", "data-net": n.id }, g);
+      }
+      continue;
+    }
+    const srcs = n.eps.filter(e => e.role === "src");
+    const src = srcs[0] || n.eps[0];
+    if (!src) continue;
+    const [x1, y1] = pt(src);
+    for (const e of n.eps) {
+      if (e === src) continue;
+      const [x2, y2] = pt(e);
+      const d = e.role === "src" && src.role === "src" ? curve(x1, y1, x2, y2) : curve(x1, y1, x2, y2);
+      const cls = n.kind === "bus" ? `edge bus fam-${n.fam}` : "edge wire";
+      el("path", { d, class: cls, "data-net": n.id }, gE);
+      el("path", { d, class: "edge-hit", "data-net": n.id }, gE);
+    }
+    if (n.kind === "bus") fams.add(n.fam); else hasWire = true;
+  }
+
+  // nodes
+  for (const n of V.nodes) {
+    const g = el("g", { class: "node" + (n.hier ? " hier" : ""), "data-node": n.id, transform: `translate(${n.x},${n.y})`, tabindex: 0, role: "button",
+      "aria-label": `${n.id}${n.hier ? " (hierarchical)" : ""}` }, gN);
+    el("rect", { class: "body", width: n.w, height: n.h, rx: 3 }, g);
+    if (n.hier) el("rect", { class: "inset", x: 4, y: 4, width: n.w - 8, height: n.h - 8, rx: 2 }, g);
+    el("text", { class: "title", x: 12, y: 19 }, g, n.id);
+    el("text", { class: "vlnv", x: 12, y: 33 }, g, n.sub);
+    el("line", { class: "hdr", x1: n.hier ? 4 : 0, y1: G.head - 3, x2: n.w - (n.hier ? 4 : 0), y2: G.head - 3 }, g);
+    for (const p of [...n.left, ...n.right]) {
+      const nc = !p.nets.length && !V.symbol;
+      const pg = el("g", { class: `pin ${p.kind}${nc ? " nc" : ""}`, "data-pin": p.id }, g);
+      if (p.nets[0]) pg.setAttribute("data-net", p.nets.map(x => x.id).join(" "));
+      const lx = p.x - n.x, ly = p.y - n.y, out = p.side === "R";
+      el("line", { x1: lx, y1: ly, x2: lx + (out ? G.stub : -G.stub), y2: ly, class: p.kind === "bus" ? `fam-${p.fam}` : null }, pg);
+      el("text", { x: out ? lx - 8 : lx + 8, y: ly + 4, "text-anchor": out ? "end" : "start" }, pg, p.name);
+    }
+  }
+  // boundary ports
+  for (const x of [...V.extL, ...V.extR]) {
+    const g = el("g", { class: `port ${x.kind}`, "data-ext": x.id, "data-net": x.nets.map(n => n.id).join(" ") || null, transform: `translate(${x.x},${x.y})` }, gX);
+    const w = x.w, h = 20, t = 9;
+    const d = x.side === "L"
+      ? `M0,${-h / 2} H${w - t} L${w},0 L${w - t},${h / 2} H0 Z`
+      : `M${t},${-h / 2} H${w} V${h / 2} H${t} L0,0 Z`;
+    el("path", { d, class: x.kind === "bus" ? `fam-${x.fam}` : null }, g);
+    el("text", { x: x.side === "L" ? 8 : t + 7, y: 4 }, g, x.name);
+  }
+  // legend
+  const lg = $("#legend");
+  const items = [...fams].sort().map(f => `<div><i style="border-color:var(--c-${f})"></i>${esc(FAMILY[f] || f)}</div>`);
+  if (hasWire) items.push(`<div><i class="w"></i>Wire nets</div>`);
+  lg.innerHTML = `<button class="lg-close" id="lg-close" aria-label="Hide colour key">×</button>` + items.join("");
+  lg.hidden = !items.length || !ui.key;
+  $("#btn-key").setAttribute("aria-pressed", String(ui.key));
+  $("#lg-close").onclick = () => setKey(false);
+  applyTransform();
+  applySelection();
+}
+
+function applyTransform() {
+  const t = ui.tf; vp.setAttribute("transform", `translate(${t.x},${t.y}) scale(${t.k})`);
+}
+function fit() {
+  if (!V) return;
+  const r = svg.getBoundingClientRect(); if (!r.width) return;
+  const b = V.bbox, bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  const k = Math.min(r.width / bw, r.height / bh, 1.3);
+  ui.fitted = true;
+  ui.tf = { k, x: (r.width - bw * k) / 2 - b.x0 * k, y: (r.height - bh * k) / 2 - b.y0 * k };
+  applyTransform();
+}
+function zoomAt(f, cx, cy) {
+  const t = ui.tf, k = Math.min(4, Math.max(0.08, t.k * f));
+  const r = svg.getBoundingClientRect();
+  if (cx === undefined) { cx = r.width / 2; cy = r.height / 2; }
+  t.x = cx - (cx - t.x) * (k / t.k); t.y = cy - (cy - t.y) * (k / t.k); t.k = k;
+  applyTransform();
+}
+
+/* ---------- selection / highlight ---------- */
+function netsOfSel() {
+  const s = ui.sel; if (!s || !V) return [];
+  if (s.type === "net") return [s.id];
+  if (s.type === "node") { const n = V.nodeMap.get(s.id); return n ? [...n.pins.values()].flatMap(p => p.nets.map(x => x.id)) : []; }
+  if (s.type === "ext") { const x = [...V.ext.values()].find(e => e.id === s.id); return x ? x.nets.map(n => n.id) : []; }
+  return [];
+}
+function highlight(ids, nodeId) {
+  const set = new Set(ids);
+  svg.classList.toggle("dim", set.size > 0 || !!nodeId);
+  svg.querySelectorAll(".hl").forEach(e => e.classList.remove("hl"));
+  if (!set.size && !nodeId) return;
+  const touched = new Set(nodeId ? [nodeId] : []);
+  svg.querySelectorAll("[data-net]").forEach(e => {
+    if (e.getAttribute("data-net").split(" ").some(id => set.has(id))) {
+      e.classList.add("hl");
+      const ng = e.closest(".node"); if (ng) touched.add(ng.getAttribute("data-node"));
+    }
+  });
+  for (const id of set) { const n = V.netMap.get(id); if (n) for (const e of n.eps) if (e.node) touched.add(e.node.id); }
+  svg.querySelectorAll(".node").forEach(g => { if (touched.has(g.getAttribute("data-node"))) g.classList.add("hl"); });
+}
+function applySelection() {
+  svg.querySelectorAll(".node.sel").forEach(e => e.classList.remove("sel"));
+  if (ui.sel && ui.sel.type === "node") { const g = svg.querySelector(`.node[data-node="${CSS.escape(ui.sel.id)}"]`); if (g) g.classList.add("sel"); }
+  highlight(netsOfSel(), ui.sel && ui.sel.type === "node" ? ui.sel.id : null);
+  renderInspector();
+}
+function select(s) { ui.sel = s; applySelection(); }
+
+/* =====================================================================
+ * Navigation, sidebar, tabs
+ * ===================================================================== */
+function currentComp() { return ui.path.length ? lib.comps.get(ui.path[ui.path.length - 1].key) : null; }
+function openPath(path) {
+  ui.path = path; ui.sel = null; ui.fitted = false;
+  const c = currentComp();
+  V = c ? (designOf(c) ? layout(buildView(c), ui.wires) : symbolView(c)) : null;
+  renderAll();
+  requestAnimationFrame(fit);
+}
+function openInstance(nodeId) {
+  const n = V && V.nodeMap.get(nodeId);
+  if (!n || !n.comp) return;
+  openPath([...ui.path, { key: n.comp.key, label: n.id }]);
+}
+function relayout() {
+  const c = currentComp(); if (!c || !designOf(c)) return;
+  const keep = ui.sel; V = layout(buildView(c), ui.wires); ui.sel = keep; render();
+}
+
+function renderAll() {
+  renderCrumbs(); renderTree(); renderFiles(); renderTabs(); render(); renderPanes();
+  const empty = !lib.comps.size;
+  $("#empty").hidden = !empty; $("#canvas-tools").hidden = empty || !V;
+  const r = roots()[0];
+  const meta = r ? [r.ext.bdName && `block design ${r.ext.bdName}`, r.ext.part, r.ext.vivadoVersion && `Vivado ${r.ext.vivadoVersion}`].filter(Boolean).join(", ") : "";
+  $("#brand-meta").textContent = meta;
+  document.title = r ? `${r.v[2]} – IP-XACT viewer` : "IP-XACT viewer";
+  const hint = $("#hint");
+  if (V && V.symbol) { hint.hidden = false; hint.textContent = "Component symbol – this component has no design view"; }
+  else if (V && V.nodes.some(n => n.hier)) { hint.hidden = false; hint.textContent = "Double-click a hierarchical block (double outline) to open it"; }
+  else hint.hidden = true;
+}
+
+function renderCrumbs() {
+  const nav = $("#crumbs"); nav.innerHTML = "";
+  ui.path.forEach((p, i) => {
+    if (i) nav.insertAdjacentHTML("beforeend", `<span class="sep" aria-hidden="true">›</span>`);
+    const b = document.createElement("button");
+    b.textContent = p.label; if (i === ui.path.length - 1) b.setAttribute("aria-current", "page");
+    b.onclick = () => openPath(ui.path.slice(0, i + 1));
+    nav.appendChild(b);
+  });
+}
+
+function renderTree() {
+  const ul = $("#tree"); ul.innerHTML = "";
+  const rs = roots();
+  const cur = ui.path.map(p => p.label + "@" + p.key).join("/");
+  const walk = (comp, label, chain, parent, depth) => {
+    const li = document.createElement("li");
+    const d = designOf(comp);
+    const nInst = d ? d.instances.length : 0;
+    const b = document.createElement("button");
+    const myChain = [...chain, { key: comp.key, label }];
+    if (myChain.map(p => p.label + "@" + p.key).join("/") === cur) b.setAttribute("aria-current", "true");
+    b.innerHTML = `<span class="t-name">${esc(label)}</span><span class="t-sub">${label !== comp.v[2] ? esc(comp.v[2]) + ", " : ""}${nInst} block${nInst === 1 ? "" : "s"}</span>`;
+    b.onclick = () => { openPath(myChain); document.body.classList.remove("side-open"); };
+    li.appendChild(b);
+    if (d && depth < 20) {
+      const subs = d.instances.map(i => [i, lib.comps.get(vkey(i.ref))]).filter(([, c]) => c && designOf(c));
+      if (subs.length) {
+        const sub = document.createElement("ul");
+        for (const [i, c] of subs) walk(c, i.name, myChain, sub, depth + 1);
+        li.appendChild(sub);
+      }
+    }
+    parent.appendChild(li);
+  };
+  for (const r of rs) walk(r, r.v[2], [], ul, 0);
+  const leafComps = [...lib.comps.values()].filter(c => !designOf(c));
+  $("#tree-note").textContent = !lib.comps.size ? "Nothing loaded yet." :
+    !rs.length ? "No hierarchical component found. Open a file below to see its symbol." :
+    leafComps.length ? `${leafComps.length} leaf component${leafComps.length > 1 ? "s" : ""} loaded – their pins are drawn exactly.` : "";
+}
+
+function renderFiles() {
+  const ul = $("#files"); ul.innerHTML = "";
+  const order = { component: 0, design: 1, designConfiguration: 2, error: 9 };
+  const files = [...lib.files].sort((a, b) => (order[a.kind] ?? 5) - (order[b.kind] ?? 5) || a.name.localeCompare(b.name));
+  for (const f of files) {
+    const li = document.createElement("li"), b = document.createElement("button");
+    b.innerHTML = `<span class="f-name">${esc(f.name)}</span><span class="f-kind ${f.kind === "error" ? "f-err" : ""}">${esc(f.kind === "designConfiguration" ? "config" : f.kind)}</span>`;
+    b.title = `${f.name}\n${f.std || ""}\n${f.key || ""}`;
+    b.onclick = () => {
+      if (f.kind === "component") openPath([{ key: f.key, label: lib.comps.get(f.key).v[2] }]);
+      else { ui.xmlFile = f.name; setTab("xml"); }
+      document.body.classList.remove("side-open");
+    };
+    li.appendChild(b); ul.appendChild(li);
+  }
+  $("#errors").innerHTML = lib.errors.map(e => `<div>${esc(e)}</div>`).join("");
+}
+
+function renderTabs() {
+  const c = currentComp(), d = designOf(c);
+  const counts = {
+    boundary: c ? c.busIfs.length + c.ports.length : 0, instances: d ? d.instances.length : 0,
+    connections: d ? d.inter.length + d.adhoc.length + d.monitors.length : 0, address: addrDesign() ? addrDesign().addr.length : 0
+  };
+  document.querySelectorAll("#tabs button").forEach(b => {
+    const t = b.dataset.tab;
+    b.setAttribute("aria-selected", String(t === ui.tab));
+    const base = { diagram: "Diagram", boundary: "Interfaces and ports", instances: "Instances", connections: "Connections", address: "Address map", xml: "XML" }[t];
+    b.innerHTML = esc(base) + (counts[t] ? `<span class="count">${counts[t]}</span>` : "");
+  });
+  for (const t of ["diagram", "boundary", "instances", "connections", "address", "xml"]) $("#pane-" + t).hidden = t !== ui.tab;
+}
+function setTab(t) { ui.tab = t; renderTabs(); renderPanes(); if (t === "diagram") requestAnimationFrame(() => { if (!ui.fitted) fit(); }); }
+
+/* ---------- panes ---------- */
+function vlnvHtml(v) { return v ? `<span class="mono">${esc(v.join(":"))}</span>` : `<span class="muted">none</span>`; }
+function epHtml(e, kind) {
+  return e.ext !== undefined ? `<span class="ep ext-ep">${esc(e.ext)}</span>` : `<span class="ep">${esc(e.inst)}/<b>${esc(e.pin)}</b></span>`;
+}
+function renderPanes() {
+  const c = currentComp(), d = designOf(c);
+  if (ui.tab === "boundary") $("#pane-boundary").innerHTML = c ? boundaryHtml(c) : emptyDoc();
+  if (ui.tab === "instances") $("#pane-instances").innerHTML = d ? instancesHtml(d) : emptyDoc("This component has no design, so it contains no instances.");
+  if (ui.tab === "connections") { $("#pane-connections").innerHTML = d ? connectionsHtml(d) : emptyDoc("This component has no design, so it has no connections."); bindSearch(); }
+  if (ui.tab === "address") $("#pane-address").innerHTML = addressHtml();
+  if (ui.tab === "xml") { $("#pane-xml").innerHTML = xmlHtml(c, d); bindXml(); }
+}
+const emptyDoc = (msg = "Open a component to see its details.") => `<div class="doc"><p class="lead">${esc(msg)}</p></div>`;
+
+function boundaryHtml(c) {
+  let h = `<div class="doc"><h3>${esc(c.v[2])}</h3><dl class="kv">
+    <dt>VLNV</dt><dd>${vlnvHtml(c.v)}</dd><dt>Standard</dt><dd>${esc(c.file.std)}</dd><dt>File</dt><dd>${esc(c.file.name)}</dd>
+    ${c.description ? `<dt>Description</dt><dd>${esc(c.description)}</dd>` : ""}
+    ${designOf(c) ? `<dt>Design</dt><dd>${vlnvHtml(designOf(c).v)}</dd>` : ""}
+    ${Object.entries(c.ext).map(([k, v]) => `<dt>${esc({ part: "FPGA part", vivadoVersion: "Vivado version", bdName: "Block design" }[k] || k)}</dt><dd>${esc(v)}</dd>`).join("")}
+  </dl>`;
+  h += `<h3>Bus interfaces</h3>`;
+  h += c.busIfs.length ? `<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Mode</th><th>Bus type</th><th>Abstraction</th><th>Parameters</th></tr></thead><tbody>${
+    c.busIfs.map(b => { const f = famFromName(b.busType && b.busType[2]) || "bus"; return `<tr><td><span class="swatch" style="border-color:var(--c-${f})"></span>${esc(b.name)}</td><td>${esc(b.mode || "–")}</td><td>${vlnvHtml(b.busType)}</td><td>${vlnvHtml(b.abs)}</td><td>${b.params.map(([k, v]) => `${esc(k)} = <span class="mono">${esc(v)}</span>`).join("<br>") || '<span class="muted">–</span>'}</td></tr>`; }).join("")
+  }</tbody></table></div>` : `<p class="lead">No bus interfaces.</p>`;
+  h += `<h3>Ports</h3>`;
+  h += c.ports.length ? `<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Direction</th><th>Width</th><th>Signal type</th><th>Properties</th></tr></thead><tbody>${
+    c.ports.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.dir)}</td><td class="mono">${p.left !== null && p.left !== undefined ? `[${esc(p.left)}:${esc(p.right)}]` : "1"}</td><td>${esc(p.type || "–")}</td><td>${(p.props || []).map(([k, v]) => `${esc(k)} = <span class="mono">${esc(v)}</span>`).join("<br>") || '<span class="muted">–</span>'}</td></tr>`).join("")
+  }</tbody></table></div>` : `<p class="lead">No ports.</p>`;
+  if (c.params.length) h += `<h3>Parameters</h3><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Value</th></tr></thead><tbody>${c.params.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`).join("")}</tbody></table></div>`;
+  for (const mm of c.memoryMaps) h += `<h3>Memory map ${esc(mm.name)}</h3><div class="tbl-wrap"><table><thead><tr><th>Address block</th><th>Base</th><th>Range</th><th>Width</th></tr></thead><tbody>${mm.blocks.map(b => `<tr><td>${esc(b.name)}</td><td class="mono">${esc(b.base)}</td><td class="mono">${esc(b.range)}</td><td>${esc(b.width || "")}</td></tr>`).join("")}</tbody></table></div>`;
+  return h + `</div>`;
+}
+
+function kindOfInst(i) {
+  const c = lib.comps.get(vkey(i.ref));
+  if (c && designOf(c)) return `<span class="pill hier">hierarchical</span>`;
+  if (i.moduleRef) return `<span class="pill">RTL module</span>`;
+  if (i.cellType && i.cellType !== "ip") return `<span class="pill">${esc(i.cellType)}</span>`;
+  return `<span class="pill">${c ? "IP, definition loaded" : "IP"}</span>`;
+}
+function instancesHtml(d) {
+  return `<div class="doc"><p class="lead">${d.instances.length} instances in ${vlnvHtml(d.v)}. Select a row to show it in the diagram.</p>
+  <div class="tbl-wrap"><table><thead><tr><th>Instance</th><th>Component</th><th>Kind</th><th>Configuration</th></tr></thead><tbody>${
+    d.instances.map(i => `<tr class="link" data-goto-node="${esc(i.name)}"><td><b>${esc(i.name)}</b></td><td>${i.moduleRef ? `module <span class="mono">${esc(i.moduleRef)}</span>` : vlnvHtml(i.ref)}</td><td>${kindOfInst(i)}</td><td>${
+      i.cfg.length ? `<details><summary>${i.cfg.length} value${i.cfg.length > 1 ? "s" : ""}</summary><table>${i.cfg.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`).join("")}</table></details>` : '<span class="muted">defaults</span>'}</td></tr>`).join("")
+  }</tbody></table></div></div>`;
+}
+
+function connectionsHtml(d) {
+  const f = ui.filter.toLowerCase();
+  const match = (name, eps) => !f || name.toLowerCase().includes(f) || eps.some(e => ((e.inst || "") + "/" + (e.pin || e.ext || "")).toLowerCase().includes(f));
+  const netFam = name => { const n = V && V.netMap.get("b:" + name); return n ? n.fam : "bus"; };
+  const inter = d.inter.filter(c => match(c.name, c.eps)), ad = d.adhoc.filter(c => match(c.name, c.eps)), mon = d.monitors.filter(m => match(m.name, [m.monitored, ...m.mons]));
+  let h = `<div class="doc"><input class="search" id="conn-search" type="search" placeholder="Filter by net, instance or pin" value="${esc(ui.filter)}" aria-label="Filter connections">`;
+  h += `<h3>Interface connections <span class="muted">${inter.length}</span></h3>`;
+  h += inter.length ? `<div class="tbl-wrap"><table><thead><tr><th>Net</th><th>Endpoints</th></tr></thead><tbody>${inter.map(c => `<tr class="link" data-goto-net="b:${esc(c.name)}"><td><span class="swatch" style="border-color:var(--c-${netFam(c.name)})"></span>${esc(c.name)}</td><td>${c.eps.map(e => epHtml(e)).join("")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="lead">None.</p>`;
+  if (mon.length) h += `<h3>Monitors <span class="muted">${mon.length}</span></h3><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Monitored interface</th><th>Monitor</th></tr></thead><tbody>${mon.map(m => `<tr class="link" data-goto-net="m:${esc(m.name)}"><td>${esc(m.name)}</td><td>${epHtml(m.monitored)}</td><td>${m.mons.map(x => epHtml(x)).join("")}</td></tr>`).join("")}</tbody></table></div>`;
+  h += `<h3>Wire nets <span class="muted">${ad.length}</span></h3>`;
+  h += ad.length ? `<div class="tbl-wrap"><table><thead><tr><th>Net</th><th>Endpoints</th><th>Attributes</th></tr></thead><tbody>${ad.map(c => `<tr class="link" data-goto-net="w:${esc(c.name)}"><td>${esc(c.name)}</td><td>${c.eps.map(e => epHtml(e)).join("")}${c.tied ? ` <span class="pill">tied ${esc(c.tied)}</span>` : ""}</td><td>${c.attrs.map(([k, v]) => `${esc(k)} = <span class="mono">${esc(v)}</span>`).join("<br>") || '<span class="muted">–</span>'}</td></tr>`).join("")}</tbody></table></div>` : `<p class="lead">None.</p>`;
+  return h + `</div>`;
+}
+function bindSearch() {
+  const s = $("#conn-search"); if (!s) return;
+  s.oninput = () => { ui.filter = s.value; const pos = s.selectionStart; renderPanes(); const n = $("#conn-search"); n.focus(); n.setSelectionRange(pos, pos); };
+}
+
+function addrDesign() {
+  const c = currentComp(), d = designOf(c);
+  if (d && d.addr.length) return d;
+  const r = ui.path.length ? designOf(lib.comps.get(ui.path[0].key)) : null;
+  return r && r.addr.length ? r : d;
+}
+function addressHtml() {
+  const d = addrDesign();
+  if (!d || !d.addr.length) return emptyDoc("No address assignments stored. Vivado address maps are kept in the top-level design's vbd:addressMap extension.");
+  const own = d === designOf(currentComp());
+  const spaces = new Map();
+  for (const a of d.addr) { if (!spaces.has(a.space)) spaces.set(a.space, []); spaces.get(a.space).push(a); }
+  const rootName = ui.path.length ? ui.path[0].label : d.v[2];
+  let h = `<div class="doc">${own ? "" : `<p class="lead">Address assignments are stored at the top level (${esc(rootName)}) and apply to the whole design.</p>`}`;
+  for (const [space, rows] of spaces) {
+    rows.sort((a, b) => { const x = toBig(a.offset), y = toBig(b.offset); return x === null || y === null ? 0 : (x < y ? -1 : x > y ? 1 : 0); });
+    const digits = Math.max(8, ...rows.map(r => { const o = toBig(r.offset), s = toBig(r.range); return o !== null && s !== null ? (o + s - 1n).toString(16).length : 8; }));
+    h += `<h3>${esc(space)}</h3><div class="tbl-wrap"><table class="addr"><colgroup><col class="c-seg"><col class="c-a"><col class="c-a"><col class="c-s"><col class="c-x"></colgroup><thead><tr><th>Slave segment</th><th>Start</th><th>End</th><th class="num">Size</th><th></th></tr></thead><tbody>${rows.map(r => {
+      const o = toBig(r.offset), s = toBig(r.range);
+      const start = o !== null ? "0x" + o.toString(16).toUpperCase().padStart(digits, "0") : esc(r.offset);
+      const end = o !== null && s !== null ? "0x" + (o + s - 1n).toString(16).toUpperCase().padStart(digits, "0") : "";
+      return `<tr class="${r.kind === "exclude" ? "excluded" : ""}"><td style="overflow-wrap:anywhere">${esc(r.segment)}</td><td class="mono">${start}</td><td class="mono">${end}</td><td class="num">${s !== null ? fmtSize(s) : esc(r.range)}</td><td>${r.kind === "exclude" ? '<span class="pill excl">excluded</span>' : ""}</td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  }
+  return h + `</div>`;
+}
+
+function highlightXml(s) {
+  return esc(s)
+    .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="x-com">$1</span>')
+    .replace(/(&lt;\/?)([\w:.-]+)/g, '$1<span class="x-tag">$2</span>')
+    .replace(/([\w:.-]+)=(&quot;[^&]*?&quot;)/g, '<span class="x-attr">$1</span>=<span class="x-val">$2</span>');
+}
+function xmlHtml(c, d) {
+  const opts = [];
+  if (c) opts.push(c.file.name);
+  if (d) opts.push(d.file.name);
+  for (const f of lib.files) if (!opts.includes(f.name)) opts.push(f.name);
+  if (!opts.length) return emptyDoc("No files loaded.");
+  let cur = ui.xmlFile && opts.includes(ui.xmlFile) ? ui.xmlFile : opts[0];
+  const f = lib.files.find(x => x.name === cur);
+  return `<div class="doc"><p class="lead"><label>File <select id="xml-sel">${opts.map(o => `<option ${o === cur ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></label>
+    <span class="muted">${esc(f.std || "")}</span></p><pre class="xml">${f.text.length > 400000 ? esc(f.text) : highlightXml(f.text)}</pre></div>`;
+}
+function bindXml() { const s = $("#xml-sel"); if (s) s.onchange = () => { ui.xmlFile = s.value; renderPanes(); }; }
+
+/* ---------- inspector ---------- */
+function renderInspector() {
+  const box = $("#inspector");
+  const c = currentComp();
+  if (!c) { box.innerHTML = `<div class="insp"><h3>Nothing selected</h3><p class="what">Load IP-XACT files to begin.</p></div>`; return; }
+  const s = ui.sel;
+  if (s && s.type === "node" && V) {
+    const n = V.nodeMap.get(s.id);
+    if (n) {
+      const i = n.inst;
+      const pins = [...n.pins.values()].sort((a, b) => (a.kind === "bus" ? 0 : 1) - (b.kind === "bus" ? 0 : 1) || a.name.localeCompare(b.name));
+      box.innerHTML = `<div class="insp"><h3>${esc(n.id)}</h3>
+        <p class="what">${n.hier ? "Hierarchical block" : i.moduleRef ? "RTL module reference" : n.missing ? "Instance not declared in the design" : "IP instance"}${n.comp && !n.hier ? ", definition loaded" : ""}</p>
+        <div class="vl">${i.moduleRef ? "module " + esc(i.moduleRef) : esc(i.ref ? i.ref.join(":") : "")}</div>
+        ${n.comp ? `<div class="actions">${n.hier ? `<button class="btn primary" data-open="${esc(n.id)}">Open block</button>` : `<button class="btn" data-open="${esc(n.id)}">Open component</button>`}</div>` : ""}
+        <h4>Configuration</h4>
+        ${i.cfg.length ? `<div class="tbl-wrap"><table><tbody>${i.cfg.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">Default configuration.</p>`}
+        <h4>Pins</h4>
+        <div class="tbl-wrap"><table><tbody>${pins.map(p => `<tr><td>${p.kind === "bus" ? `<span class="swatch" style="border-color:var(--c-${p.fam})"></span>` : ""}${esc(p.name)}</td><td>${
+          p.nets.length ? p.nets.map(x => `<button class="linkish" data-net-sel="${esc(x.id)}">${esc(x.name)}</button>`).join("<br>") : '<span class="muted">not connected</span>'}</td></tr>`).join("")}</tbody></table></div>
+        ${n.known === false ? "" : ""}</div>`;
+      return;
+    }
+  }
+  if (s && s.type === "net" && V) {
+    const n = V.netMap.get(s.id);
+    if (n) {
+      const src = n.src || {};
+      const epl = n.eps.map(e => e.node
+        ? `<tr><td><button class="linkish" data-node-sel="${esc(e.node.id)}">${esc(e.node.id)}</button>/${esc(e.name)}</td><td class="muted">${e.role === "src" ? "drives" : "receives"}${e.known ? "" : "*"}</td></tr>`
+        : `<tr><td><i>${esc(e.name)}</i> <span class="muted">(port)</span></td><td class="muted">${e.role === "src" ? "drives" : "receives"}</td></tr>`).join("");
+      const kindLabel = n.kind === "bus" ? `Interface connection, ${FAMILY[n.fam] || "bus"}` : n.kind === "mon" ? "Monitor connection" : "Wire net";
+      const attrs = n.kind === "wire" ? (src.attrs || []) : (V.design.intfNetAttrs.find(a => a.net === n.name) || { props: [] }).props;
+      box.innerHTML = `<div class="insp"><h3>${esc(n.name)}</h3><p class="what">${esc(kindLabel)}, ${n.eps.length} endpoints</p>
+        <div class="tbl-wrap"><table><tbody>${epl}</tbody></table></div>
+        ${n.eps.some(e => e.node && !e.known) ? `<p class="muted" style="font-size:12.5px">* Direction inferred from the connection or pin name. Load the IP's component.xml for exact directions.</p>` : ""}
+        ${attrs.length ? `<h4>Attributes</h4><div class="tbl-wrap"><table><tbody>${attrs.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+        ${src.tied ? `<h4>Tied value</h4><p class="mono">${esc(src.tied)}</p>` : ""}</div>`;
+      return;
+    }
+  }
+  if (s && s.type === "ext" && V) {
+    const x = [...V.ext.values()].find(e => e.id === s.id);
+    if (x) {
+      const it = x.item || {};
+      box.innerHTML = `<div class="insp"><h3>${esc(x.name)}</h3><p class="what">External ${x.kind === "bus" ? "interface" : "port"} of ${esc(c.v[2])}</p>
+        <dl class="kv">${x.kind === "bus" ? `<dt>Mode</dt><dd>${esc(it.mode || "–")}</dd><dt>Bus type</dt><dd>${vlnvHtml(it.busType)}</dd><dt>Abstraction</dt><dd>${vlnvHtml(it.abs)}</dd>` :
+          `<dt>Direction</dt><dd>${esc(it.dir || "–")}</dd><dt>Width</dt><dd>${it.left != null ? `[${esc(it.left)}:${esc(it.right)}]` : "1"}</dd><dt>Signal type</dt><dd>${esc(it.type || "–")}</dd>`}
+        ${[...(it.params || []), ...(it.props || [])].map(([k, v]) => `<dt>${esc(k)}</dt><dd class="mono">${esc(v)}</dd>`).join("")}</dl>
+        <h4>Connected to</h4>${x.nets.map(n => `<button class="linkish" data-net-sel="${esc(n.id)}">${esc(n.name)}</button>`).join("<br>") || '<p class="muted">Not connected.</p>'}</div>`;
+      return;
+    }
+  }
+  // component summary
+  const d = designOf(c);
+  const nh = d ? d.instances.filter(i => { const cc = lib.comps.get(vkey(i.ref)); return cc && designOf(cc); }).length : 0;
+  box.innerHTML = `<div class="insp"><h3>${esc(c.v[2])}</h3><p class="what">${d ? "Hierarchical component" : "Component"}${c.description ? ". " + esc(c.description) : ""}</p>
+    <div class="vl">${esc(c.v.join(":"))}</div>
+    <dl class="kv">
+      ${d ? `<dt>Blocks</dt><dd>${d.instances.length}${nh ? ` (${nh} hierarchical)` : ""}</dd><dt>Interface nets</dt><dd>${d.inter.length}</dd><dt>Wire nets</dt><dd>${d.adhoc.length}</dd>` : ""}
+      <dt>Bus interfaces</dt><dd>${c.busIfs.length}</dd><dt>Ports</dt><dd>${c.ports.length}</dd>
+      ${Object.entries(c.ext).map(([k, v]) => `<dt>${esc({ part: "FPGA part", vivadoVersion: "Vivado", bdName: "Block design" }[k] || k)}</dt><dd>${esc(v)}</dd>`).join("")}
+    </dl>
+    <h4>Using the diagram</h4>
+    <p class="muted" style="font-size:12.5px;margin:0">Drag to pan, scroll or pinch to zoom. Select a block or a line to trace its connections. Keys: F fit, + and − zoom, Esc clear, U go up a level.</p></div>`;
+}
+
+/* =====================================================================
+ * Events
+ * ===================================================================== */
+let drag = null, pinch = null, pinched = false;
+const touches = new Map();
+const pinchState = () => {
+  const [a, b] = [...touches.values()], r = svg.getBoundingClientRect();
+  return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top };
+};
+svg.addEventListener("pointerdown", e => {
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touches.size === 2) {                     // two fingers: pinch zoom + pan
+    const st = pinchState(); pinch = { ...st, k: ui.tf.k, tx: ui.tf.x, ty: ui.tf.y }; drag = null; pinched = true;
+    for (const id of touches.keys()) { try { svg.setPointerCapture(id); } catch { } }
+    return;
+  }
+  if (touches.size === 1) pinched = false;
+  drag = { x: e.clientX, y: e.clientY, tx: ui.tf.x, ty: ui.tf.y, moved: false, id: e.pointerId };
+});
+const endTouch = e => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+svg.addEventListener("pointercancel", e => { endTouch(e); drag = null; });
+svg.addEventListener("pointermove", e => {
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && touches.size === 2) {
+    const st = pinchState(), k = Math.min(4, Math.max(0.08, pinch.k * st.d / pinch.d));
+    ui.tf = { k, x: st.cx - (pinch.cx - pinch.tx) * (k / pinch.k), y: st.cy - (pinch.cy - pinch.ty) * (k / pinch.k) };
+    applyTransform(); return;
+  }
+  if (drag && drag.id === e.pointerId) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; svg.setPointerCapture(e.pointerId); svg.classList.add("panning"); }
+    if (drag.moved) { ui.tf.x = drag.tx + dx; ui.tf.y = drag.ty + dy; applyTransform(); }
+    return;
+  }
+  if (ui.sel) return;
+  const t = e.target.closest("[data-net]");
+  if (t) highlight(t.getAttribute("data-net").split(" "), null);
+  else highlight([], null);
+});
+svg.addEventListener("pointerup", e => {
+  endTouch(e);
+  const d = drag; drag = null; svg.classList.remove("panning");
+  if (!d || d.moved || pinched) return;
+  const nodeEl = e.target.closest(".node"), netEl = e.target.closest("[data-net]"), extEl = e.target.closest("[data-ext]");
+  if (netEl && !netEl.classList.contains("node")) {
+    const ids = netEl.getAttribute("data-net").split(" ");
+    if (netEl.classList.contains("pin") && nodeEl && ids.length) select({ type: "net", id: ids[0] });
+    else if (extEl) select({ type: "ext", id: extEl.getAttribute("data-ext") });
+    else select({ type: "net", id: ids[0] });
+  } else if (extEl) select({ type: "ext", id: extEl.getAttribute("data-ext") });
+  else if (nodeEl) select({ type: "node", id: nodeEl.getAttribute("data-node") });
+  else select(null);
+});
+svg.addEventListener("pointerleave", () => { if (!ui.sel) highlight([], null); });
+svg.addEventListener("dblclick", e => { const n = e.target.closest(".node"); if (n) openInstance(n.getAttribute("data-node")); });
+svg.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = svg.getBoundingClientRect();
+  zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+svg.addEventListener("keydown", e => {
+  const n = e.target.closest && e.target.closest(".node");
+  if (n && e.key === "Enter") { e.preventDefault(); const id = n.getAttribute("data-node"); if (ui.sel && ui.sel.type === "node" && ui.sel.id === id) openInstance(id); else select({ type: "node", id }); }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, select, textarea")) return;
+  if (e.key === "Escape") { select(null); document.body.classList.remove("side-open"); }
+  else if (ui.tab !== "diagram") return;
+  else if (e.key === "f" || e.key === "F") fit();
+  else if (e.key === "+" || e.key === "=") zoomAt(1.25);
+  else if (e.key === "-") zoomAt(0.8);
+  else if ((e.key === "u" || e.key === "U") && ui.path.length > 1) openPath(ui.path.slice(0, -1));
+});
+$("#btn-key").onclick = () => setKey(!ui.key);
+$("#z-fit").onclick = fit; $("#z-in").onclick = () => zoomAt(1.25); $("#z-out").onclick = () => zoomAt(0.8);
+document.querySelectorAll("[data-wires]").forEach(b => b.onclick = () => {
+  ui.wires = b.dataset.wires;
+  document.querySelectorAll("[data-wires]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  relayout();
+});
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab); });
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-open]"); if (o) { openInstance(o.dataset.open); return; }
+  const ns = e.target.closest("[data-net-sel]"); if (ns) { select({ type: "net", id: ns.dataset.netSel }); return; }
+  const nd = e.target.closest("[data-node-sel]"); if (nd) { select({ type: "node", id: nd.dataset.nodeSel }); return; }
+  const gn = e.target.closest("[data-goto-node]"); if (gn && !e.target.closest("details")) { setTab("diagram"); select({ type: "node", id: gn.dataset.gotoNode }); return; }
+  const gt = e.target.closest("[data-goto-net]"); if (gt) { setTab("diagram"); select({ type: "net", id: gt.dataset.gotoNet }); }
+});
+$("#btn-side").onclick = () => document.body.classList.toggle("side-open");
+window.addEventListener("resize", () => { if (ui.tab === "diagram") fit(); });
+
+/* ---------- theme ---------- */
+const THEMES = ["auto", "light", "dark"];
+function applyTheme(t) {
+  if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+  $("#btn-theme").title = `Theme: ${t}`;
+  try { localStorage.setItem("ipxact-viewer-theme", t); } catch { }
+}
+let theme = "auto";
+try { theme = localStorage.getItem("ipxact-viewer-theme") || "auto"; } catch { }
+applyTheme(theme);
+$("#btn-theme").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; applyTheme(theme); };
+
+/* ---------- loading ---------- */
+function resetLib() { lib.comps.clear(); lib.designs.clear(); lib.dcfgs.clear(); lib.others = []; lib.files = []; lib.errors = []; }
+function loadTexts(files, replace = true) {
+  if (replace) resetLib();
+  for (const f of files) {
+    if (lib.files.some(x => x.name === f.name)) {           // keep names unique
+      let i = 2; while (lib.files.some(x => x.name === `${f.name} (${i})`)) i++; f.name = `${f.name} (${i})`;
+    }
+    parseFile(f.name, f.text);
+  }
+  const r = roots()[0];
+  if (r) openPath([{ key: r.key, label: r.v[2] }]);
+  else if (lib.comps.size) { const c = [...lib.comps.values()][0]; openPath([{ key: c.key, label: c.v[2] }]); }
+  else { ui.path = []; V = null; renderAll(); }
+}
+async function readFileList(list) {
+  const out = [];
+  for (const f of list) if (/\.xml$/i.test(f.name)) out.push({ name: f.webkitRelativePath ? f.webkitRelativePath.split("/").slice(-1)[0] : f.name, path: f.webkitRelativePath || f.name, text: await f.text() });
+  return out;
+}
+function afterLoad(files) {
+  if (!files.length) { lib.errors = ["No .xml files found in the selection."]; renderFiles(); return; }
+  loadTexts(files);
+}
+$("#in-files").onchange = async e => { afterLoad(await readFileList(e.target.files)); e.target.value = ""; };
+$("#in-folder").onchange = async e => { afterLoad(await readFileList(e.target.files)); e.target.value = ""; };
+for (const id of ["#btn-open", "#e-files"]) $(id).onclick = () => $("#in-files").click();
+for (const id of ["#btn-folder", "#e-folder"]) $(id).onclick = () => $("#in-folder").click();
+
+async function walkEntry(entry, out) {
+  if (entry.isFile) { if (/\.xml$/i.test(entry.name)) { const f = await new Promise((res, rej) => entry.file(res, rej)); out.push({ name: f.name, text: await f.text() }); } }
+  else if (entry.isDirectory) {
+    const reader = entry.createReader();
+    for (; ;) { const batch = await new Promise((res, rej) => reader.readEntries(res, rej)); if (!batch.length) break; for (const b of batch) await walkEntry(b, out); }
+  }
+}
+document.addEventListener("dragover", e => { e.preventDefault(); document.body.classList.add("drop-over"); });
+document.addEventListener("dragleave", e => { if (!e.relatedTarget) document.body.classList.remove("drop-over"); });
+document.addEventListener("drop", async e => {
+  e.preventDefault(); document.body.classList.remove("drop-over");
+  const out = [];
+  const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (items.length) for (const it of items) await walkEntry(it, out);
+  else out.push(...await readFileList(e.dataTransfer.files));
+  afterLoad(out);
+});
+
+/* ---------- boot ---------- */
+(function boot() {
+  let bundle = null;
+  try { bundle = JSON.parse($("#ipxact-bundle").textContent); } catch (e) { console.warn("bundle", e); }
+  if (bundle && bundle.files && bundle.files.length) loadTexts(bundle.files);
+  else renderAll();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (V && !V.symbol) relayout(); else if (V) { const c = currentComp(); V = symbolView(c); render(); } fit(); });
+})();
+</script>
+</body>
+</html>
